@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wall -O0 -save-temps -Werror -Wextra  -Wdouble-promotion -Wl,--dependency-file=CMakeFiles/sels.dir/link.d CMakeFiles/sels.dir/main.cpp.o -o sels
