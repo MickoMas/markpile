@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -23,15 +24,34 @@
 // ```c++ file="something.h"
 
 
+namespace flags
+{
+    bool silent          = false;
+#define silent_block(x) flags::silent || (x, 0)
+    bool debug           = false;
+#define debug_block(x) flags::debug && (x, 0)
+    bool ignore_terminal = false;
+#define ignore_terminal_block(x) !flags::ignore_terminal && x
+}
 
 
 
 
-constexpr auto get_var(std::string_view var, std::string_view text) -> std::string
+constexpr auto get_var(std::string_view var, std::string_view text) -> std::optional<std::string>
 {
     auto it = std::ranges::search(text, std::string(var) + '=').end();
-    assert(it++ != text.end());
+    if(it == text.end()) return {};
+
+    ++it;
     return std::string(it, std::find(it, text.end(), '"'));
+}
+
+constexpr auto is_block_name(std::string_view name, std::string_view text) -> bool
+{
+    if(text.size() < name.size())
+        return {};
+
+    return std::string_view(text.cbegin(), text.cbegin() + name.size()) == name;
 }
 
 
@@ -42,32 +62,45 @@ auto stream_search(std::istream& stream, std::string_view text) -> void
             {
                 return ((letter == text[x]) || (x = 0)) && !(++x %= text.size());
             });
-    stream.get();
 }
-
-
 
 
 
 auto get_file(const std::filesystem::path& path_to_file)
 {
     std::ifstream file(path_to_file, std::ios::binary);
-
-    stream_search(file, "```");
-
-    std::string line_buffer;
-
-    std::getline(file, line_buffer);
-
-    std::ofstream file_out(get_var("file", line_buffer));
-
-    for(char letter; (letter = file.get(), letter != '`') ;)
+    while((stream_search(file, "```"), file))
     {
-        file_out.put(letter);
-    }
-    if(file.get() == '`' || '`' == file.get())
+        std::string line_buffer;
 
-    std::getline(file, line_buffer);
+        std::getline(file, line_buffer);
+
+        auto file_variable = get_var("file", line_buffer);
+        bool is_terminal = ignore_terminal_block(is_block_name("terminal", line_buffer));
+
+        if(!file_variable.has_value() && !is_terminal) 
+        {
+            std::print(stdout, "No file options, skip");
+            stream_search(file, "```");
+            continue;
+        }
+        std::ostringstream code_block_stream;
+
+#define check_for_letter(x) (x) != '`'
+#define appendix file && (check_for_letter(letter) || check_for_letter(letter = file.get()) || check_for_letter(letter = file.get()))
+
+        for(char letter = file.get(); appendix ;letter = file.get())
+        {
+            std::print("{}", letter);
+            code_block_stream.put(letter);
+        }
+
+        if(is_terminal) system(code_block_stream.str().data());
+        else            std::ofstream(file_variable.value(), std::ios::binary) << code_block_stream.str();
+
+
+        silent_block(std::println("Done"));
+    }
 
 
 
@@ -77,14 +110,9 @@ auto get_file(const std::filesystem::path& path_to_file)
 
 auto main([[maybe_unused]]int argc, [[maybe_unused]]char** argv) noexcept -> decltype(argc)
 {
-    // auto file = std::ifstream("../something.md", std::ios::binary);
-    // for(std::string line; std::getline(file, line);)
-    // {
-    //     std::println("{}",line);
-    // }
-    // take_all_code_blocks("../something.md");
-    //
-    //
+
+    std::vector<std::string_view> args(argv, argv + argc);
+    std::println("{}", args);
 
     get_file("../something.md");
 }

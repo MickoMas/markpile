@@ -1,19 +1,4 @@
 
-somethign
-#
-##
-###
-dlkjsld 
-```c++ file="../something.txt"
-auto main() -> int
-{
-    std::println("Hello world");
-}
-```
-
-
-```cmake file="../CMakeList.txt"
-
 cmake_minimum_required(VERSION 3.31.1)
 
 project(sels)
@@ -33,7 +18,3 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 
 add_custom_target(run COMMAND ${PROJECT_NAME})
 
-```
-```terminal
-echo Hello > ../what.txt
-```
