@@ -7,6 +7,7 @@
 #include <fstream>
 #include <generator>
 #include <iostream>
+#include <iterator>
 #include <print>
 #include <ranges>
 #include <string>
@@ -32,6 +33,16 @@ namespace flags
 #define debug_block(x) flags::debug && (x, 0)
     bool ignore_terminal = false;
 #define ignore_terminal_block(x) !flags::ignore_terminal && x
+    void print_help()
+    {
+        std::println(
+                R"(
+                    -s --silent             Silent output
+                    -d --debug              Show debug output
+                    -t --ignore-terminal    Ignore terminal block
+                    -h --help               Show this text
+                )");
+    }
 }
 
 
@@ -80,7 +91,7 @@ auto get_file(const std::filesystem::path& path_to_file)
 
         if(!file_variable.has_value() && !is_terminal) 
         {
-            std::print(stdout, "No file options, skip");
+            silent_block(std::print(stdout, "No file options, skip"));
             stream_search(file, "```");
             continue;
         }
@@ -91,7 +102,7 @@ auto get_file(const std::filesystem::path& path_to_file)
 
         for(char letter = file.get(); appendix ;letter = file.get())
         {
-            std::print("{}", letter);
+            debug_block(std::print("{}", letter));
             code_block_stream.put(letter);
         }
 
@@ -111,8 +122,63 @@ auto get_file(const std::filesystem::path& path_to_file)
 auto main([[maybe_unused]]int argc, [[maybe_unused]]char** argv) noexcept -> decltype(argc)
 {
 
-    std::vector<std::string_view> args(argv, argv + argc);
+    if(argc == 1)
+    {
+    
+        std::println("No files passed");
+        return EXIT_FAILURE;
+    }
+    std::vector<std::string_view> args(argv + 1, argv + argc);
     std::println("{}", args);
+    for(auto i : args)
+    {
+        if(i[0] != '-')
+        {
+            if(!std::filesystem::exists(i)) 
+            {
+                std::println("There no file called {}", i);
+                return EXIT_FAILURE;
+            }
+            get_file(i);
+        }
+        else if(i[1] != '-')
+            switch(i[1])
+            {
+                case 's':
+                    flags::silent = true;
+                    break;
+                case 'd':
+                    flags::debug = true;
+                    break;
+                case 't':
+                    flags::ignore_terminal = true;
+                    break;
+                case 'h':
+                    flags::print_help();
+                    return EXIT_SUCCESS;
+                default:
+                    std::println("There no option called {}", i);
+                    flags::print_help();
+                    return EXIT_FAILURE;
+            }
+        else
+        {
+#define check_flag_match(x) std::equal(std::next(i.begin(), 2), i.cend(), std::begin(x))
+            if     (check_flag_match("silent"))             flags::silent          = true;
+            else if(check_flag_match("debug"))              flags::debug           = true;
+            else if(check_flag_match("ignore-terminal"))    flags::ignore_terminal = true;
+            else if(check_flag_match("help"))
+            {
+                    flags::print_help();
+                    return EXIT_SUCCESS;
+            }
+            else
+            {
+                    std::println("There no option called {}", i);
+                    flags::print_help();
+                    return EXIT_FAILURE;
+            }
+        }
+    }
 
-    get_file("../something.md");
 }

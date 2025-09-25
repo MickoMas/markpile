@@ -1,4 +1,0 @@
-/home/mikeos/MyProjects/C++/template4/build/CMakeFiles/sels.dir
-/home/mikeos/MyProjects/C++/template4/build/CMakeFiles/run.dir
-/home/mikeos/MyProjects/C++/template4/build/CMakeFiles/edit_cache.dir
-/home/mikeos/MyProjects/C++/template4/build/CMakeFiles/rebuild_cache.dir

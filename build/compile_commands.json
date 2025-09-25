@@ -1,8 +1,0 @@
-[
-{
-  "directory": "/home/mikeos/MyProjects/C++/template4/build",
-  "command": "/usr/bin/c++  -I/home/mikeos/MyProjects/C++/template4/include -Wall -O0 -save-temps -Werror -Wextra  -Wdouble-promotion -std=gnu++23 -o CMakeFiles/sels.dir/main.cpp.o -c /home/mikeos/MyProjects/C++/template4/main.cpp",
-  "file": "/home/mikeos/MyProjects/C++/template4/main.cpp",
-  "output": "CMakeFiles/sels.dir/main.cpp.o"
-}
-]
