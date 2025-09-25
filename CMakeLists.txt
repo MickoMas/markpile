@@ -15,4 +15,4 @@ add_executable(${PROJECT_NAME} main.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # target_compile_options(${PROJECT_NAME} -Wall -Werror)
 
-add_custom_target(run COMMAND ${PROJECT_NAME} ../something.md)
+add_custom_target(run COMMAND ${PROJECT_NAME} -h)

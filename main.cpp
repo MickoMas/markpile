@@ -67,12 +67,12 @@ constexpr auto is_block_name(std::string_view name, std::string_view text) -> bo
 
 
 
-auto stream_search(std::istream& stream, std::string_view text) -> void
+auto stream_search(std::istream& stream, std::string_view text) -> std::istream&
 {
-    std::ranges::find_if(std::ranges::views::istream<char>(stream), [&text,x = 0](char letter) mutable -> bool 
-            {
-                return ((letter == text[x]) || (x = 0)) && !(++x %= text.size());
-            });
+    for(int x = 0; char letter : std::views::istream<char>(stream))
+        if(((letter == text[x]) || (x = 0)) && !(++x %= text.size()))
+            break;
+    return stream;
 }
 
 
@@ -80,7 +80,7 @@ auto stream_search(std::istream& stream, std::string_view text) -> void
 auto get_file(const std::filesystem::path& path_to_file)
 {
     std::ifstream file(path_to_file, std::ios::binary);
-    while((stream_search(file, "```"), file))
+    while(stream_search(file, "```"))
     {
         std::string line_buffer;
 
