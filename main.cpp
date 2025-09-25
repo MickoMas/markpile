@@ -142,24 +142,23 @@ auto main([[maybe_unused]]int argc, [[maybe_unused]]char** argv) noexcept -> dec
             get_file(i);
         }
         else if(i[1] != '-')
-            switch(i[1])
+            for(char letter : i | std::views::drop(1))
             {
-                case 's':
-                    flags::silent = true;
-                    break;
-                case 'd':
-                    flags::debug = true;
-                    break;
-                case 't':
-                    flags::ignore_terminal = true;
-                    break;
-                case 'h':
-                    flags::print_help();
-                    return EXIT_SUCCESS;
-                default:
-                    std::println("There no option called {}", i);
-                    flags::print_help();
-                    return EXIT_FAILURE;
+                switch(letter)
+                {
+                    case 's': flags::silent          = true;
+                        break;
+                    case 'd': flags::debug           = true;
+                        break;
+                    case 't': flags::ignore_terminal = true;
+                        break;
+                    case 'h': flags::print_help();
+                        return EXIT_SUCCESS;
+                    default:
+                        std::println("There no option called {} in {}", letter, i);
+                        flags::print_help();
+                        return EXIT_FAILURE;
+                }
             }
         else
         {
