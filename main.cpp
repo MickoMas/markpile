@@ -77,7 +77,7 @@ auto stream_search(std::istream& stream, std::string_view text) -> std::istream&
 
 
 
-auto get_file(const std::filesystem::path& path_to_file)
+auto markpile(const std::filesystem::path& path_to_file)
 {
     std::ifstream file(path_to_file, std::ios::binary);
     while(stream_search(file, "```"))
@@ -91,16 +91,15 @@ auto get_file(const std::filesystem::path& path_to_file)
 
         if(!file_variable.has_value() && !is_terminal) 
         {
-            silent_block(std::print(stdout, "No file options, skip"));
+            silent_block(std::println(stdout, "No file options, skip"));
             stream_search(file, "```");
             continue;
         }
         std::ostringstream code_block_stream;
 
-#define check_for_letter(x) (x) != '`'
-#define appendix file && (check_for_letter(letter) || check_for_letter(letter = file.get()) || check_for_letter(letter = file.get()))
+#define ch_for_ltr(x) (x) != '`'
 
-        for(char letter = file.get(); appendix ;letter = file.get())
+        for(char letter = file.get(); file && (ch_for_ltr(letter) || ch_for_ltr(letter = file.get()) || ch_for_ltr(letter = file.get())) ;letter = file.get())
         {
             debug_block(std::print("{}", letter));
             code_block_stream.put(letter);
@@ -113,7 +112,48 @@ auto get_file(const std::filesystem::path& path_to_file)
         silent_block(std::println("Done"));
     }
 
+}
 
+
+constexpr auto argument_pass(std::string_view args) -> void
+{
+
+    if(args[1] != '-')
+    {
+        for(char letter : args | std::views::drop(1))
+        {
+            switch(letter)
+            {
+                case 's': flags::silent          = true;
+                          break;
+                case 'd': flags::debug           = true;
+                          break;
+                case 't': flags::ignore_terminal = true;
+                          break;
+                case 'h': flags::print_help();
+                          return ;
+                default:
+                          std::println("There no option called {} in {}", letter, args);
+                          flags::print_help();
+                          return ;
+            }
+        }
+    }
+    else
+    {
+#define check_flag_match(x) std::equal(std::next(args.begin(), 2), args.cend(), std::begin(x))
+        if     (check_flag_match("silent"))             return argument_pass("-s");
+        else if(check_flag_match("debug"))              return argument_pass("-d");
+        else if(check_flag_match("ignore-terminal"))    return argument_pass("-t");
+        else if(check_flag_match("help"))               return argument_pass("-h");
+        else
+        {
+            std::println("There no option called {}", args);
+            flags::print_help();
+            return ;
+        }
+
+    }
 
 
 }
@@ -139,45 +179,10 @@ auto main([[maybe_unused]]int argc, [[maybe_unused]]char** argv) noexcept -> dec
                 std::println("There no file called {}", i);
                 return EXIT_FAILURE;
             }
-            get_file(i);
+            markpile(i);
+            continue;
         }
-        else if(i[1] != '-')
-            for(char letter : i | std::views::drop(1))
-            {
-                switch(letter)
-                {
-                    case 's': flags::silent          = true;
-                        break;
-                    case 'd': flags::debug           = true;
-                        break;
-                    case 't': flags::ignore_terminal = true;
-                        break;
-                    case 'h': flags::print_help();
-                        return EXIT_SUCCESS;
-                    default:
-                        std::println("There no option called {} in {}", letter, i);
-                        flags::print_help();
-                        return EXIT_FAILURE;
-                }
-            }
-        else
-        {
-#define check_flag_match(x) std::equal(std::next(i.begin(), 2), i.cend(), std::begin(x))
-            if     (check_flag_match("silent"))             flags::silent          = true;
-            else if(check_flag_match("debug"))              flags::debug           = true;
-            else if(check_flag_match("ignore-terminal"))    flags::ignore_terminal = true;
-            else if(check_flag_match("help"))
-            {
-                    flags::print_help();
-                    return EXIT_SUCCESS;
-            }
-            else
-            {
-                    std::println("There no option called {}", i);
-                    flags::print_help();
-                    return EXIT_FAILURE;
-            }
-        }
+        argument_pass(i);
     }
 
 }
