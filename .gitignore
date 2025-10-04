@@ -1,9 +1,5 @@
-/build/
-/*.txt
+*
+*/
 !CMakeLists.txt
-/.clangd
-/.cache/
-/*.md
-/build.sh
-/CMakeFiles/
-
+!main.cpp
+!.gitignore

@@ -1,8 +1,6 @@
 #include <algorithm>
 #include <cassert>
-#include <cctype>
 #include <cstdlib>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <generator>
@@ -13,6 +11,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <mikl/views/istream_buf>
 
 // find ```
 // find ext like cpp, c++
@@ -62,29 +61,67 @@ constexpr auto is_block_name(std::string_view name, std::string_view text) -> bo
     if(text.size() < name.size())
         return {};
 
-    return std::string_view(text.cbegin(), text.cbegin() + name.size()) == name;
+    std::string_view result(text.cbegin(), text.cbegin() + name.size());
+    return  result == name;
 }
 
 
 
-auto stream_search(std::istream& stream, std::string_view text) -> std::istream&
+auto skip_stream_until(std::istream& stream, std::string_view text) -> std::istream&
 {
+    // dlksjldjsadslajdslakjdas
+    // djlsakjdlas
     for(int x = 0; char letter : std::views::istream<char>(stream))
         if(((letter == text[x]) || (x = 0)) && !(++x %= text.size()))
             break;
+
     return stream;
+}
+
+[[nodiscard]]
+constexpr auto ending_with(std::string_view text, std::string_view match) -> bool
+{
+    if(text.size() < match.size()) return false;
+    return std::ranges::equal(text | std::views::drop(text.size() - match.size()), match);
+}
+
+template <typename  CharT, typename Traits>
+auto istream_match(std::basic_istream<CharT, Traits>& istream, std::string_view match,CharT delimeter = '\n') -> std::generator<std::basic_string<CharT, Traits>&&>
+{
+    for(std::basic_string<CharT, Traits> line; CharT letter : mikl::views::istream_buf(istream))
+    {
+        if(ending_with(line, match))
+        {
+            co_yield std::string(line.cbegin(), line.cend() - match.size());
+            break;
+        }
+        if(letter == delimeter)
+        {
+            co_yield std::move(line);
+            line = std::string();
+        }
+        else line += letter;
+    }
 }
 
 
 
 auto markpile(const std::filesystem::path& path_to_file)
 {
+    using namespace std::string_view_literals;
+    static constexpr std::string_view code_block_literal = "```"sv;
     std::ifstream file(path_to_file, std::ios::binary);
-    while(stream_search(file, "```"))
+    std::string line_buffer;
+    auto is_closed_line_block = [&line_buffer](){return ending_with(line_buffer, code_block_literal);};
+    while(skip_stream_until(file, code_block_literal))
     {
-        std::string line_buffer;
-
-        std::getline(file, line_buffer);
+        line_buffer = []<typename CharT, typename Traits>(std::basic_istream<CharT, Traits>& istream)
+        {std::basic_string<CharT, Traits> line;
+            for(CharT letter : mikl::views::istream_buf(istream))
+                if(ending_with(line, code_block_literal) || letter == '\n') break;
+                else line += letter;
+            return line;
+        }(file);
 
         auto file_variable = get_var("file", line_buffer);
         bool is_terminal = ignore_terminal_block(is_block_name("terminal", line_buffer));
@@ -92,26 +129,36 @@ auto markpile(const std::filesystem::path& path_to_file)
         if(!file_variable.has_value() && !is_terminal) 
         {
             silent_block(std::println(stdout, "No file options, skip"));
-            stream_search(file, "```");
+            skip_stream_until(file, code_block_literal);
             continue;
         }
-        std::ostringstream code_block_stream;
 
-#define ch_for_ltr(x) (x) != '`'
+        auto lines = istream_match(file, code_block_literal);
 
-        for(char letter = file.get(); file && (ch_for_ltr(letter) || ch_for_ltr(letter = file.get()) || ch_for_ltr(letter = file.get())) ;letter = file.get())
+
+        if(is_terminal) 
         {
-            debug_block(std::print("{}", letter));
-            code_block_stream.put(letter);
+            if(is_closed_line_block()) continue;   
+            for(auto line : lines) system(line.c_str());
         }
+        else
+        {
+            std::filesystem::path path_to_out(file_variable.value());
+            if(!path_to_out.parent_path().empty())
+                std::filesystem::create_directories(path_to_out.parent_path());
 
-        if(is_terminal) system(code_block_stream.str().data());
-        else            std::ofstream(file_variable.value(), std::ios::binary) << code_block_stream.str();
+            std::ofstream file_out(path_to_out, std::ios::binary);
+            if(is_closed_line_block()) 
+            {
+                silent_block(std::println("Done"));
+                continue;   
+            }
 
+            std::ranges::copy(lines, std::ostream_iterator<std::string>(file_out, "\n"));
+        }
 
         silent_block(std::println("Done"));
     }
-
 }
 
 
